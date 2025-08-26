@@ -1,13 +1,17 @@
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import captureScreenshot from "./screenshot.js";
 import { ErrorCodes } from "./types.js";
 
 const server = new Server(
   {
-    name: "mcp-playwright-screenshot",
+    name: "screenshot_url",
     version: "0.1.0",
   },
   { capabilities: { tools: {} } }
@@ -30,14 +34,22 @@ const inputSchema = z.object({
 });
 
 // tools/list: 公布工具元数据
+// server.setRequestHandler(ListToolsRequestSchema, async () => ({
+//     tools: [
+//       {
+//         name: "get_url_screenshot",
+//         description: "截取指定URL页面的屏幕截图，支持全页截图和自定义视口设置",
+//         inputSchema: inputSchema,
+//       },
+//     ],
+// }));
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "screenshot",
-        description:
-          "使用 Playwright 对指定 URL 截图并返回 PNG 的 base64 图片内容。包含政府网站与内网访问限制、尺寸上限校验。",
-        input_schema: inputSchema,
+        name: "get_url_screenshot",
+        description: "截取指定URL页面的屏幕截图，支持全页截图和自定义视口设置",
+        inputSchema: zodToJsonSchema(inputSchema),
       },
     ],
   };
@@ -47,7 +59,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: rawArgs } = request.params;
 
-  if (name !== "screenshot") {
+  if (name !== "get_url_screenshot") {
     return {
       isError: true,
       content: [
@@ -89,5 +101,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// 通过 stdio 提供服务
-await server.connect(new StdioServerTransport());
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("screenshot MCP Server running on stdio");
+}
+
+main().catch((error) => {
+  console.error("Fatal error in main():", error);
+  process.exit(1);
+});
