@@ -55,31 +55,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
-// tools/call: 调用工具
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+ // tools/call: 调用工具
+server.setRequestHandler(CallToolRequestSchema, async (request, _extra) => {
   const { name, arguments: rawArgs } = request.params;
 
   if (name !== "get_url_screenshot") {
     return {
-      isError: true,
       content: [
         {
           type: "text",
-          text: `E_TOOL_NOT_FOUND: 未知工具 ${name}`,
+          text: `Unknown tool: ${name}`,
         },
       ],
+      isError: true,
     };
   }
 
   try {
     const parsed = inputSchema.parse(rawArgs ?? {});
-    const result = await captureScreenshot(parsed);
+    await captureScreenshot(parsed);
     return {
       content: [
+        // {
+        //   type: "image",
+        //   data: result.dataBase64,
+        //   mimeType: result.mimeType,
+        // },
         {
-          type: "image",
-          data: result.dataBase64,
-          mimeType: result.mimeType,
+          type: "text",
+          text: `执行了截图`,
         },
       ],
     };
@@ -90,13 +94,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       typeof err?.code === "string" && knownCodes.has(err.code) ? err.code : "E_SCREENSHOT_FAILED";
 
     return {
-      isError: true,
       content: [
         {
           type: "text",
           text: `${code}: ${message}`,
         },
       ],
+      isError: true,
     };
   }
 });
